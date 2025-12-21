@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User, AuthContextType } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -12,6 +12,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const loadingProfileRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -36,20 +37,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const loadUserProfile = async (userId: string) => {
-    try {
-      console.log('loadUserProfile START for user:', userId);
+    if (loadingProfileRef.current) {
+      console.log('loadUserProfile already in progress, skipping');
+      return;
+    }
 
-      const { data: profile, error: profileError } = await supabase
+    loadingProfileRef.current = true;
+    console.log('loadUserProfile START for user:', userId);
+
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile query timeout')), 10000)
+      );
+
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      console.log('Profile query result:', { hasProfile: !!profile, hasError: !!profileError, profile, error: profileError });
+      const { data: profile, error: profileError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('Profile query result:', { hasProfile: !!profile, hasError: !!profileError });
 
       if (profileError) {
         console.error('Error loading profile:', profileError);
         setIsLoading(false);
+        loadingProfileRef.current = false;
         return;
       }
 
@@ -82,8 +99,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err) {
       console.error('Exception loading profile:', err);
     } finally {
-      console.log('loadUserProfile FINALLY block, setting isLoading to false');
+      console.log('loadUserProfile FINALLY block');
       setIsLoading(false);
+      loadingProfileRef.current = false;
     }
   };
 
