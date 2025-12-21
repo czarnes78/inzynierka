@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { Send, Sparkles, Loader, MapPin, Calendar, Users } from 'lucide-react';
-import OfferCard from '../components/UI/OfferCard';
-import { mockOffers } from '../data/mockData';
+
+interface Offer {
+  id: string;
+  title: string;
+  country: string;
+  destination: string;
+  price: number;
+  duration: string;
+  image_url: string;
+  trip_type: string;
+  rating?: number;
+  description?: string;
+}
 
 interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
-  offers?: typeof mockOffers;
+  offers?: Offer[];
   timestamp: Date;
 }
 
@@ -24,11 +35,12 @@ const AIAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const sampleQuestions = [
-    "Szukam relaksujących wakacji nad morzem do 3000 zł",
-    "Jaka wycieczka będzie dobra dla rodziny z dziećmi?",
-    "Chcę zwiedzić Włochy, co polecasz?",
-    "Szukam przygodowej wycieczki w góry",
-    "Gdzie najlepiej jechać w grudniu?"
+    "Egipt",
+    "Jaka wycieczka do Grecji?",
+    "Maroko",
+    "Pokaż oferty do Tajlandii",
+    "Last minute do Hiszpanii",
+    "Wycieczki do 2500 zł"
   ];
 
   const handleSend = async () => {
@@ -42,68 +54,49 @@ const AIAssistant: React.FC = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI processing
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(input);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-travel-assistant`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ message: currentInput })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+
+      const aiResponse: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: data.response,
+        offers: data.offers || [],
+        timestamp: new Date()
+      };
+
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: 'Przepraszam, wystąpił błąd podczas przetwarzania Twojego zapytania. Spróbuj ponownie za chwilę.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
-  };
-
-  const generateAIResponse = (userInput: string): Message => {
-    const lowerInput = userInput.toLowerCase();
-    let response = '';
-    let relevantOffers = [];
-
-    // Simple keyword matching for demo
-    if (lowerInput.includes('relaks') || lowerInput.includes('plaża') || lowerInput.includes('morze')) {
-      response = 'Doskonały wybór! Dla relaksujących wakacji nad morzem polecam następujące oferty:';
-      relevantOffers = mockOffers.filter(offer => 
-        offer.tripType === 'relax' || 
-        offer.destination.toLowerCase().includes('kreta') ||
-        offer.country.toLowerCase().includes('grecja') ||
-        offer.country.toLowerCase().includes('chorwacja')
-      );
-    } else if (lowerInput.includes('rodzin') || lowerInput.includes('dziec')) {
-      response = 'Świetnie! Dla rodzinnych wakacji z dziećmi przygotowałem specjalne oferty, które zapewnią rozrywkę dla całej rodziny:';
-      relevantOffers = mockOffers.filter(offer => offer.tripType === 'family');
-    } else if (lowerInput.includes('włoch') || lowerInput.includes('rzym') || lowerInput.includes('wenecj')) {
-      response = 'Włochy to fantastyczny wybór! Oto oferty, które pozwolą Ci odkryć piękno tego kraju:';
-      relevantOffers = mockOffers.filter(offer => offer.country === 'Włochy');
-    } else if (lowerInput.includes('przygod') || lowerInput.includes('aktywn') || lowerInput.includes('gór')) {
-      response = 'Kochasz aktywny wypoczynek? Oto oferty pełne przygód:';
-      relevantOffers = mockOffers.filter(offer => offer.tripType === 'adventure');
-    } else if (lowerInput.includes('grudzień') || lowerInput.includes('zim')) {
-      response = 'W grudniu polecam ciepłe kraje, gdzie możesz uciec od zimy:';
-      relevantOffers = mockOffers.filter(offer => 
-        offer.country === 'Egipt' || 
-        offer.season === 'winter'
-      );
-    } else if (lowerInput.includes('budżet') || lowerInput.includes('tani') || lowerInput.includes('zł')) {
-      const budgetMatch = lowerInput.match(/(\d+)\s*zł/);
-      const budget = budgetMatch ? parseInt(budgetMatch[1]) : 2000;
-      response = `Znalazłem oferty w Twoim budżecie do ${budget} zł:`;
-      relevantOffers = mockOffers.filter(offer => offer.price <= budget);
-    } else {
-      response = 'Dziękuję za Twoje pytanie! Na podstawie tego co napisałeś, oto kilka ofert, które mogą Cię zainteresować:';
-      relevantOffers = mockOffers.slice(0, 3);
     }
-
-    if (relevantOffers.length === 0) {
-      relevantOffers = mockOffers.slice(0, 2);
-      response += ' Chociaż nie znalazłem dokładnie tego czego szukasz, oto kilka popularnych ofert:';
-    }
-
-    return {
-      id: Date.now().toString(),
-      type: 'ai',
-      content: response,
-      offers: relevantOffers.slice(0, 3),
-      timestamp: new Date()
-    };
   };
 
   const handleQuestionClick = (question: string) => {
@@ -188,12 +181,30 @@ const AIAssistant: React.FC = () => {
           </div>
 
           {/* Show offers from last AI message */}
-          {messages.length > 0 && messages[messages.length - 1].offers && (
+          {messages.length > 0 && messages[messages.length - 1].offers && messages[messages.length - 1].offers!.length > 0 && (
             <div className="border-t p-6 bg-gray-50">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Polecane oferty:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {messages[messages.length - 1].offers!.map(offer => (
-                  <OfferCard key={offer.id} offer={offer} />
+                  <div key={offer.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <a href={`/offer/${offer.id}`} className="block">
+                      <img
+                        src={offer.image_url}
+                        alt={offer.title}
+                        className="w-full h-48 object-cover"
+                      />
+                      <div className="p-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{offer.title}</h3>
+                        <p className="text-sm text-gray-600 mb-3">{offer.destination}, {offer.country}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">{offer.duration}</span>
+                          <span className="text-xl font-bold text-blue-600">
+                            {offer.price.toLocaleString('pl-PL')} zł
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
                 ))}
               </div>
             </div>

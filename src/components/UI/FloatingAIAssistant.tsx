@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Send, Sparkles, Loader } from 'lucide-react';
-import OfferCard from './OfferCard';
-import { mockOffers } from '../../data/mockData';
+
+interface Offer {
+  id: string;
+  title: string;
+  country: string;
+  destination: string;
+  price: number;
+  duration: string;
+  image_url: string;
+  trip_type: string;
+  rating?: number;
+}
 
 interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
-  offers?: typeof mockOffers;
+  offers?: Offer[];
   timestamp: Date;
 }
 
@@ -25,10 +35,10 @@ const FloatingAIAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const sampleQuestions = [
-    "Szukam relaksujących wakacji nad morzem",
-    "Jaka wycieczka będzie dobra dla rodziny z dziećmi?",
-    "Chcę zwiedzić Włochy, co polecasz?",
-    "Szukam przygodowej wycieczki w góry"
+    "Egipt",
+    "Wycieczka do Grecji",
+    "Pokazać oferty do Maroka",
+    "Co polecasz na Tajlandię?"
   ];
 
   const handleSend = async () => {
@@ -42,55 +52,49 @@ const FloatingAIAssistant: React.FC = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
-    // Simulate AI processing
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(input);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-travel-assistant`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ message: currentInput })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+
+      const aiResponse: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: data.response,
+        offers: data.offers?.slice(0, 2) || [],
+        timestamp: new Date()
+      };
+
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: 'Przepraszam, wystąpił błąd. Spróbuj ponownie za chwilę.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
-  };
-
-  const generateAIResponse = (userInput: string): Message => {
-    const lowerInput = userInput.toLowerCase();
-    let response = '';
-    let relevantOffers = [];
-
-    if (lowerInput.includes('relaks') || lowerInput.includes('plaża') || lowerInput.includes('morze')) {
-      response = 'Doskonały wybór! Dla relaksujących wakacji nad morzem polecam:';
-      relevantOffers = mockOffers.filter(offer => 
-        offer.tripType === 'relax' || 
-        offer.destination.toLowerCase().includes('kreta') ||
-        offer.country.toLowerCase().includes('grecja') ||
-        offer.country.toLowerCase().includes('chorwacja')
-      );
-    } else if (lowerInput.includes('rodzin') || lowerInput.includes('dziec')) {
-      response = 'Świetnie! Dla rodzinnych wakacji z dziećmi przygotowałem:';
-      relevantOffers = mockOffers.filter(offer => offer.tripType === 'family');
-    } else if (lowerInput.includes('włoch') || lowerInput.includes('rzym')) {
-      response = 'Włochy to fantastyczny wybór! Oto oferty:';
-      relevantOffers = mockOffers.filter(offer => offer.country === 'Włochy');
-    } else if (lowerInput.includes('przygod') || lowerInput.includes('gór')) {
-      response = 'Kochasz aktywny wypoczynek? Oto oferty pełne przygód:';
-      relevantOffers = mockOffers.filter(offer => offer.tripType === 'adventure');
-    } else {
-      response = 'Oto kilka ofert, które mogą Cię zainteresować:';
-      relevantOffers = mockOffers.slice(0, 2);
     }
-
-    if (relevantOffers.length === 0) {
-      relevantOffers = mockOffers.slice(0, 2);
-    }
-
-    return {
-      id: Date.now().toString(),
-      type: 'ai',
-      content: response,
-      offers: relevantOffers.slice(0, 2),
-      timestamp: new Date()
-    };
   };
 
   const handleQuestionClick = (question: string) => {
@@ -164,13 +168,17 @@ const FloatingAIAssistant: React.FC = () => {
                 </div>
 
                 {/* Show offers */}
-                {message.offers && (
+                {message.offers && message.offers.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {message.offers.map(offer => (
-                      <div key={offer.id} className="bg-gray-50 rounded-lg p-2">
+                      <a
+                        key={offer.id}
+                        href={`/offer/${offer.id}`}
+                        className="block bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-colors duration-200"
+                      >
                         <div className="flex items-center space-x-2">
                           <img
-                            src={offer.images[0]}
+                            src={offer.image_url}
                             alt={offer.title}
                             className="w-12 h-12 object-cover rounded"
                           />
@@ -178,13 +186,13 @@ const FloatingAIAssistant: React.FC = () => {
                             <h4 className="text-xs font-semibold text-gray-900 line-clamp-1">
                               {offer.title}
                             </h4>
-                            <p className="text-xs text-gray-600">{offer.destination}</p>
+                            <p className="text-xs text-gray-600">{offer.destination}, {offer.country}</p>
                             <p className="text-xs font-bold text-blue-600">
                               {offer.price.toLocaleString('pl-PL')} zł
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </a>
                     ))}
                   </div>
                 )}
