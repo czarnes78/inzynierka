@@ -1,25 +1,53 @@
-import React, { useState } from 'react';
-import { 
-  Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, 
+import React, { useState, useEffect } from 'react';
+import {
+  Calendar, MapPin, Users, CreditCard, Clock, CheckCircle,
   XCircle, AlertTriangle, Eye, Download, Filter, Search,
   Star, Plane, Phone, Mail, Plus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { mockReservations, mockOffers } from '../data/mockData';
-import { Reservation } from '../types';
+import { fetchUserReservations, deleteReservation, updateReservationStatus } from '../services/reservationService';
+import { fetchOfferById } from '../services/offerService';
+import { Reservation, Offer } from '../types';
 
 const Reservations: React.FC = () => {
   const { user } = useAuth();
+  const [userReservations, setUserReservations] = useState<Reservation[]>([]);
+  const [offers, setOffers] = useState<Map<string, Offer>>(new Map());
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [reservationToCancel, setReservationToCancel] = useState<string | null>(null);
 
-  const userReservations = mockReservations.filter(r => r.userId === user?.id);
+  useEffect(() => {
+    if (user) {
+      loadReservations();
+    }
+  }, [user]);
+
+  const loadReservations = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    const reservations = await fetchUserReservations(user.id);
+    setUserReservations(reservations);
+
+    const offersMap = new Map<string, Offer>();
+    for (const reservation of reservations) {
+      if (!offersMap.has(reservation.offerId)) {
+        const offer = await fetchOfferById(reservation.offerId);
+        if (offer) {
+          offersMap.set(reservation.offerId, offer);
+        }
+      }
+    }
+    setOffers(offersMap);
+    setLoading(false);
+  };
 
   const filteredReservations = userReservations.filter(reservation => {
-    const offer = mockOffers.find(o => o.id === reservation.offerId);
+    const offer = offers.get(reservation.offerId);
     const matchesSearch = offer?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          offer?.destination.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          reservation.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -80,10 +108,15 @@ const Reservations: React.FC = () => {
     setShowCancelModal(true);
   };
 
-  const confirmCancelReservation = () => {
+  const confirmCancelReservation = async () => {
     if (reservationToCancel) {
-      // Mock cancellation
-      alert(`Rezerwacja ${reservationToCancel} została anulowana`);
+      const success = await updateReservationStatus(reservationToCancel, 'cancelled');
+      if (success) {
+        alert(`Rezerwacja ${reservationToCancel} została anulowana`);
+        await loadReservations();
+      } else {
+        alert('Nie udało się anulować rezerwacji');
+      }
       setShowCancelModal(false);
       setReservationToCancel(null);
     }
@@ -92,7 +125,7 @@ const Reservations: React.FC = () => {
   const renderReservationModal = () => {
     if (!selectedReservation) return null;
 
-    const offer = mockOffers.find(o => o.id === selectedReservation.offerId);
+    const offer = offers.get(selectedReservation.offerId);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -417,7 +450,7 @@ const Reservations: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {filteredReservations.map(reservation => {
-              const offer = mockOffers.find(o => o.id === reservation.offerId);
+              const offer = offers.get(reservation.offerId);
               return (
                 <div key={reservation.id} className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">

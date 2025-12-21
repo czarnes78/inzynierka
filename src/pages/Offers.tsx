@@ -3,35 +3,22 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { Filter, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import OfferCard from '../components/UI/OfferCard';
 import { Offer, SearchFilters } from '../types';
-import { mockOffers } from '../data/mockData';
+import { fetchOffers } from '../services/offerService';
 
 const Offers: React.FC = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const [offers, setOffers] = useState<Offer[]>(mockOffers);
-  const [filteredOffers, setFilteredOffers] = useState<Offer[]>(mockOffers);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [filteredOffers, setFilteredOffers] = useState<Offer[]>([]);
   const [filters, setFilters] = useState<SearchFilters>({});
   const [sortBy, setSortBy] = useState<string>('newest');
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [countries, setCountries] = useState<string[]>([]);
 
-  // Parse URL parameters on component mount
   useEffect(() => {
-    // Check if we're on last-minute or seasonal page
-    let baseOffers = mockOffers;
-    if (location.pathname === '/last-minute') {
-      baseOffers = mockOffers.filter(offer => offer.isLastMinute);
-    } else if (location.pathname === '/seasonal') {
-      // Show offers based on current season or all seasonal offers
-      baseOffers = mockOffers.filter(offer => 
-        offer.season === 'summer' || offer.season === 'winter' || 
-        offer.season === 'spring' || offer.season === 'autumn'
-      );
-    }
-    
-    setOffers(baseOffers);
-    
     const urlFilters: SearchFilters = {};
-    
+
     searchParams.forEach((value, key) => {
       if (key === 'dateFrom' || key === 'dateTo') {
         urlFilters[key as keyof SearchFilters] = new Date(value) as any;
@@ -43,9 +30,26 @@ const Offers: React.FC = () => {
     });
 
     setFilters(urlFilters);
+    loadOffers(urlFilters);
   }, [searchParams, location.pathname]);
 
-  // Filter and sort offers
+  const loadOffers = async (initialFilters: SearchFilters = {}) => {
+    setLoading(true);
+    let allOffers = await fetchOffers();
+
+    if (location.pathname === '/last-minute') {
+      allOffers = allOffers.filter(offer => offer.isLastMinute);
+    } else if (location.pathname === '/seasonal') {
+      allOffers = allOffers;
+    }
+
+    setOffers(allOffers);
+
+    const uniqueCountries = [...new Set(allOffers.map(offer => offer.country))];
+    setCountries(uniqueCountries);
+    setLoading(false);
+  };
+
   useEffect(() => {
     let filtered = [...offers];
 
@@ -113,7 +117,6 @@ const Offers: React.FC = () => {
     setFilteredOffers(filtered);
   }, [offers, filters, sortBy]);
 
-  const countries = [...new Set(mockOffers.map(offer => offer.country))];
   const seasons = ['spring', 'summer', 'autumn', 'winter'];
   const seasonLabels = {
     spring: 'Wiosna',
@@ -304,7 +307,12 @@ const Offers: React.FC = () => {
             </div>
 
             {/* Offers Grid */}
-            {filteredOffers.length > 0 ? (
+            {loading ? (
+              <div className="col-span-full text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600"></div>
+                <p className="mt-4 text-gray-600">Ładowanie ofert...</p>
+              </div>
+            ) : filteredOffers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredOffers.map(offer => (
                   <OfferCard key={offer.id} offer={offer} />

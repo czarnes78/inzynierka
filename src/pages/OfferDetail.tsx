@@ -1,26 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import { 
-  MapPin, Calendar, Users, Star, Clock, Utensils, 
+import {
+  MapPin, Calendar, Users, Star, Clock, Utensils,
   Car, Building, CheckCircle, Heart,
   ChevronLeft, ChevronRight, Lock, CreditCard, Plane
 } from 'lucide-react';
-import { mockOffers } from '../data/mockData';
+import { fetchOfferById } from '../services/offerService';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import PaymentModal from '../components/UI/PaymentModal';
+import { Offer } from '../types';
 
 const OfferDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, isFavorite, addToFavorites, removeFromFavorites } = useAuth();
+  const [offer, setOffer] = useState<Offer | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [guests, setGuests] = useState(2);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const offer = mockOffers.find(o => o.id === id);
+  useEffect(() => {
+    if (id) {
+      loadOffer(id);
+    }
+  }, [id]);
+
+  const loadOffer = async (offerId: string) => {
+    setLoading(true);
+    const fetchedOffer = await fetchOfferById(offerId);
+    setOffer(fetchedOffer);
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!offer) {
     return <Navigate to="/offers" replace />;

@@ -1,25 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthContextType } from '../types';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users database
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'admin@travel.pl',
-    name: 'Administrator',
-    role: 'admin',
-    createdAt: new Date('2024-01-01')
-  },
-  {
-    id: '2',
-    email: 'user@travel.pl',
-    name: 'Jan Kowalski',
-    role: 'client',
-    createdAt: new Date('2024-01-15')
-  }
-];
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -31,81 +14,136 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [favorites, setFavorites] = useState<string[]>([]);
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('travel_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    
-    // Load user favorites
-    const storedFavorites = localStorage.getItem('travel_favorites');
-    if (storedFavorites) {
-      setFavorites(JSON.parse(storedFavorites));
-    }
-    
-    setIsLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((async (_event, session) => {
+      if (session?.user) {
+        await loadUserProfile(session.user.id);
+      } else {
+        setUser(null);
+        setFavorites([]);
+        setIsLoading(false);
+      }
+    }) as any);
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const loadUserProfile = async (userId: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profile) {
+      setUser({
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role,
+        createdAt: new Date(profile.created_at)
+      });
+
+      const { data: favoritesData } = await supabase
+        .from('favorites')
+        .select('offer_id')
+        .eq('user_id', userId);
+
+      if (favoritesData) {
+        setFavorites(favoritesData.map(f => f.offer_id));
+      }
+    }
+    setIsLoading(false);
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Mock authentication
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === 'password123') {
-      setUser(foundUser);
-      localStorage.setItem('travel_user', JSON.stringify(foundUser));
-      setIsLoading(false);
-      return true;
-    }
-    
-    setIsLoading(false);
-    return false;
-  };
 
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Mock registration
-    const existingUser = mockUsers.find(u => u.email === email);
-    if (existingUser) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error || !data.user) {
       setIsLoading(false);
       return false;
     }
 
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role: 'client',
-      createdAt: new Date()
-    };
-
-    mockUsers.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('travel_user', JSON.stringify(newUser));
-    setIsLoading(false);
+    await loadUserProfile(data.user.id);
     return true;
   };
 
-  const logout = () => {
+  const register = async (email: string, password: string, name: string): Promise<boolean> => {
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error || !data.user) {
+      setIsLoading(false);
+      return false;
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: data.user.id,
+        email,
+        name,
+        role: 'client'
+      });
+
+    if (profileError) {
+      setIsLoading(false);
+      return false;
+    }
+
+    await loadUserProfile(data.user.id);
+    return true;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setFavorites([]);
-    localStorage.removeItem('travel_user');
-    localStorage.removeItem('travel_favorites');
   };
 
-  const addToFavorites = (offerId: string) => {
+  const addToFavorites = async (offerId: string) => {
     if (!user) return;
-    
-    const newFavorites = [...favorites, offerId];
-    setFavorites(newFavorites);
-    localStorage.setItem('travel_favorites', JSON.stringify(newFavorites));
+
+    const { error } = await supabase
+      .from('favorites')
+      .insert({
+        user_id: user.id,
+        offer_id: offerId
+      });
+
+    if (!error) {
+      setFavorites([...favorites, offerId]);
+    }
   };
 
-  const removeFromFavorites = (offerId: string) => {
-    const newFavorites = favorites.filter(id => id !== offerId);
-    setFavorites(newFavorites);
-    localStorage.setItem('travel_favorites', JSON.stringify(newFavorites));
+  const removeFromFavorites = async (offerId: string) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('offer_id', offerId);
+
+    if (!error) {
+      setFavorites(favorites.filter(id => id !== offerId));
+    }
   };
 
   const isFavorite = (offerId: string) => {

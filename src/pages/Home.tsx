@@ -1,17 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plane, Star, MapPin, Clock, Sparkles, Shield, HeartHandshake } from 'lucide-react';
 import SearchForm from '../components/UI/SearchForm';
 import OfferCard from '../components/UI/OfferCard';
-import { SearchFilters } from '../types';
-import { mockOffers } from '../data/mockData';
+import { SearchFilters, Offer } from '../types';
+import { fetchOffers } from '../services/offerService';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [featuredOffers, setFeaturedOffers] = useState<Offer[]>([]);
+  const [lastMinuteOffers, setLastMinuteOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadOffers();
+  }, []);
+
+  const loadOffers = async () => {
+    setLoading(true);
+    const allOffers = await fetchOffers();
+    setFeaturedOffers(allOffers.slice(0, 3));
+    setLastMinuteOffers(allOffers.filter(offer => offer.isLastMinute).slice(0, 2));
+    setLoading(false);
+  };
 
   const handleSearch = (filters: SearchFilters) => {
     const params = new URLSearchParams();
-    
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (value instanceof Date) {
@@ -24,9 +39,6 @@ const Home: React.FC = () => {
 
     navigate(`/offers?${params.toString()}`);
   };
-
-  const featuredOffers = mockOffers.slice(0, 3);
-  const lastMinuteOffers = mockOffers.filter(offer => offer.isLastMinute).slice(0, 2);
 
   return (
     <div className="min-h-screen">
@@ -119,9 +131,16 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredOffers.map(offer => (
-              <OfferCard key={offer.id} offer={offer} />
-            ))}
+            {loading ? (
+              <div className="col-span-full text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600"></div>
+                <p className="mt-4 text-gray-600">Ładowanie ofert...</p>
+              </div>
+            ) : (
+              featuredOffers.map(offer => (
+                <OfferCard key={offer.id} offer={offer} />
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -147,9 +166,15 @@ const Home: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {lastMinuteOffers.map(offer => (
-                <OfferCard key={offer.id} offer={offer} />
-              ))}
+              {loading ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600"></div>
+                </div>
+              ) : (
+                lastMinuteOffers.map(offer => (
+                  <OfferCard key={offer.id} offer={offer} />
+                ))
+              )}
             </div>
           </div>
         </section>
