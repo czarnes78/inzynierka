@@ -147,8 +147,8 @@ const Login: React.FC = () => {
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Konta testowe:</h4>
             <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Klient:</strong> user@travel.pl / password123</div>
-              <div><strong>Admin:</strong> admin@travel.pl / password123</div>
+              <div><strong>Klient:</strong> user@travel.com / user123</div>
+              <div><strong>Admin:</strong> admin@travel.com / admin123</div>
             </div>
           </div>
         </div>
