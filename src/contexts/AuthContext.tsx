@@ -37,13 +37,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserProfile = async (userId: string) => {
     try {
-      console.log('Loading profile for user:', userId);
+      console.log('loadUserProfile START for user:', userId);
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      console.log('Profile query result:', { hasProfile: !!profile, hasError: !!profileError, profile, error: profileError });
 
       if (profileError) {
         console.error('Error loading profile:', profileError);
@@ -52,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (profile) {
-        console.log('Profile loaded:', profile);
+        console.log('Profile loaded successfully, setting user state');
         setUser({
           id: profile.id,
           email: profile.email,
@@ -73,12 +75,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (favoritesData) {
           setFavorites(favoritesData.map(f => f.offer_id));
         }
+        console.log('loadUserProfile COMPLETE');
       } else {
         console.error('No profile found for user:', userId);
       }
     } catch (err) {
       console.error('Exception loading profile:', err);
     } finally {
+      console.log('loadUserProfile FINALLY block, setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -87,10 +91,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
 
     try {
+      console.log('Calling signInWithPassword...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
+
+      console.log('signInWithPassword response:', { hasData: !!data, hasError: !!error, userId: data?.user?.id });
 
       if (error) {
         console.error('Login error:', error);
@@ -104,7 +111,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return false;
       }
 
+      console.log('About to load profile for user:', data.user.id);
       await loadUserProfile(data.user.id);
+      console.log('Profile loaded, returning true');
       return true;
     } catch (err) {
       console.error('Exception during login:', err);
