@@ -36,48 +36,81 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const loadUserProfile = async (userId: string) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      console.log('Loading profile for user:', userId);
 
-    if (profile) {
-      setUser({
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role,
-        createdAt: new Date(profile.created_at)
-      });
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-      const { data: favoritesData } = await supabase
-        .from('favorites')
-        .select('offer_id')
-        .eq('user_id', userId);
-
-      if (favoritesData) {
-        setFavorites(favoritesData.map(f => f.offer_id));
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        setIsLoading(false);
+        return;
       }
+
+      if (profile) {
+        console.log('Profile loaded:', profile);
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          createdAt: new Date(profile.created_at)
+        });
+
+        const { data: favoritesData, error: favError } = await supabase
+          .from('favorites')
+          .select('offer_id')
+          .eq('user_id', userId);
+
+        if (favError) {
+          console.error('Error loading favorites:', favError);
+        }
+
+        if (favoritesData) {
+          setFavorites(favoritesData.map(f => f.offer_id));
+        }
+      } else {
+        console.error('No profile found for user:', userId);
+      }
+    } catch (err) {
+      console.error('Exception loading profile:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error || !data.user) {
+      if (error) {
+        console.error('Login error:', error);
+        setIsLoading(false);
+        return false;
+      }
+
+      if (!data.user) {
+        console.error('No user data returned');
+        setIsLoading(false);
+        return false;
+      }
+
+      await loadUserProfile(data.user.id);
+      return true;
+    } catch (err) {
+      console.error('Exception during login:', err);
       setIsLoading(false);
       return false;
     }
-
-    await loadUserProfile(data.user.id);
-    return true;
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {

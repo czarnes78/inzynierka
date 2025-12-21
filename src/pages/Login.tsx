@@ -18,14 +18,21 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    console.log('Login attempt for:', email);
+
     try {
       const success = await login(email, password);
+      console.log('Login result:', success);
+
       if (success) {
+        console.log('Login successful, navigating to:', from);
         navigate(from, { replace: true });
       } else {
+        console.log('Login failed');
         setError('Niepoprawny e-mail lub hasło');
       }
     } catch (err) {
+      console.error('Login exception:', err);
       setError('Wystąpił błąd podczas logowania');
     }
   };
