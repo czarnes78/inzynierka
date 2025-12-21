@@ -6,6 +6,7 @@ import Footer from './components/Layout/Footer';
 import FloatingAIAssistant from './components/UI/FloatingAIAssistant';
 import Home from './pages/Home';
 import Offers from './pages/Offers';
+import SeasonalOffers from './pages/SeasonalOffers';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
@@ -28,7 +29,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/offers" element={<Offers />} />
               <Route path="/last-minute" element={<Offers />} />
-              <Route path="/seasonal" element={<Offers />} />
+              <Route path="/seasonal" element={<SeasonalOffers />} />
               <Route path="/offer/:id" element={<OfferDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />

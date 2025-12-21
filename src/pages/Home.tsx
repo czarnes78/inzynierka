@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plane, Star, MapPin, Clock, Sparkles, Shield, HeartHandshake } from 'lucide-react';
+import { Plane, Star, MapPin, Clock, Sparkles, Shield, HeartHandshake, Snowflake, Flower2, Sun, Leaf } from 'lucide-react';
 import SearchForm from '../components/UI/SearchForm';
 import OfferCard from '../components/UI/OfferCard';
 import { SearchFilters, Offer } from '../types';
@@ -66,6 +66,72 @@ const Home: React.FC = () => {
           {/* Search Form */}
           <div className="max-w-4xl mx-auto">
             <SearchForm onSearch={handleSearch} />
+          </div>
+        </div>
+      </section>
+
+      {/* Seasonal Offers */}
+      <section className="py-16 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Wycieczki Sezonowe</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Odkryj najlepsze destynacje dostosowane do pory roku
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Link
+              to="/seasonal"
+              className="bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-200 rounded-xl p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="text-center">
+                <div className="text-5xl mb-3">❄️</div>
+                <h3 className="text-2xl font-bold text-blue-600 mb-2">Zima</h3>
+                <p className="text-gray-700 text-sm">
+                  narty, snowboard, après-ski
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              to="/seasonal"
+              className="bg-gradient-to-br from-pink-100 to-pink-50 border-2 border-pink-200 rounded-xl p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="text-center">
+                <div className="text-5xl mb-3">🌸</div>
+                <h3 className="text-2xl font-bold text-pink-600 mb-2">Wiosna</h3>
+                <p className="text-gray-700 text-sm">
+                  nurkowanie, trekking, city nature
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              to="/seasonal"
+              className="bg-gradient-to-br from-orange-100 to-orange-50 border-2 border-orange-200 rounded-xl p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="text-center">
+                <div className="text-5xl mb-3">☀️</div>
+                <h3 className="text-2xl font-bold text-orange-600 mb-2">Lato</h3>
+                <p className="text-gray-700 text-sm">
+                  żagle, plaża, sporty wodne
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              to="/seasonal"
+              className="bg-gradient-to-br from-amber-100 to-amber-50 border-2 border-amber-200 rounded-xl p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105 group"
+            >
+              <div className="text-center">
+                <div className="text-5xl mb-3">🍁</div>
+                <h3 className="text-2xl font-bold text-amber-600 mb-2">Jesień</h3>
+                <p className="text-gray-700 text-sm">
+                  city break, kultura, gastronomia
+                </p>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
