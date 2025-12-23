@@ -12,9 +12,9 @@ export const mockOffers: Offer[] = [
     price: 2499,
     originalPrice: 2999,
     images: [
-      'https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg',
-      'https://images.pexels.com/photos/2034335/pexels-photo-2034335.jpeg',
-      'https://images.pexels.com/photos/3566135/pexels-photo-3566135.jpeg'
+      'https://images.pexels.com/photos/1010657/pexels-photo-1010657.jpeg',
+      'https://images.pexels.com/photos/164336/pexels-photo-164336.jpeg',
+      'https://images.pexels.com/photos/533851/pexels-photo-533851.jpeg'
     ],
     meals: 'AI',
     tripType: 'relax',
@@ -62,9 +62,9 @@ export const mockOffers: Offer[] = [
     duration: 5,
     price: 899,
     images: [
-      'https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg',
-      'https://images.pexels.com/photos/1287145/pexels-photo-1287145.jpeg',
-      'https://images.pexels.com/photos/709552/pexels-photo-709552.jpeg'
+      'https://images.pexels.com/photos/1619317/pexels-photo-1619317.jpeg',
+      'https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg',
+      'https://images.pexels.com/photos/1670045/pexels-photo-1670045.jpeg'
     ],
     meals: 'HB',
     tripType: 'adventure',
@@ -105,9 +105,9 @@ export const mockOffers: Offer[] = [
     duration: 4,
     price: 1599,
     images: [
-      'https://images.pexels.com/photos/2901209/pexels-photo-2901209.jpeg',
-      'https://images.pexels.com/photos/532263/pexels-photo-532263.jpeg',
-      'https://images.pexels.com/photos/1797161/pexels-photo-1797161.jpeg'
+      'https://images.pexels.com/photos/2225439/pexels-photo-2225439.jpeg',
+      'https://images.pexels.com/photos/1797161/pexels-photo-1797161.jpeg',
+      'https://images.pexels.com/photos/2064827/pexels-photo-2064827.jpeg'
     ],
     meals: 'BB',
     tripType: 'culture',
@@ -142,9 +142,9 @@ export const mockOffers: Offer[] = [
     duration: 10,
     price: 3299,
     images: [
-      'https://images.pexels.com/photos/1320684/pexels-photo-1320684.jpeg',
-      'https://images.pexels.com/photos/2034335/pexels-photo-2034335.jpeg',
-      'https://images.pexels.com/photos/1174732/pexels-photo-1174732.jpeg'
+      'https://images.pexels.com/photos/2104152/pexels-photo-2104152.jpeg',
+      'https://images.pexels.com/photos/1518967/pexels-photo-1518967.jpeg',
+      'https://images.pexels.com/photos/2034335/pexels-photo-2034335.jpeg'
     ],
     meals: 'HB',
     tripType: 'family',
@@ -180,9 +180,9 @@ export const mockOffers: Offer[] = [
     price: 1899,
     originalPrice: 2599,
     images: [
-      'https://images.pexels.com/photos/1174732/pexels-photo-1174732.jpeg',
-      'https://images.pexels.com/photos/2034335/pexels-photo-2034335.jpeg',
-      'https://images.pexels.com/photos/3566135/pexels-photo-3566135.jpeg'
+      'https://images.pexels.com/photos/71241/pexels-photo-71241.jpeg',
+      'https://images.pexels.com/photos/262780/pexels-photo-262780.jpeg',
+      'https://images.pexels.com/photos/3290075/pexels-photo-3290075.jpeg'
     ],
     meals: 'AI',
     tripType: 'relax',
