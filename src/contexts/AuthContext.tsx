@@ -177,6 +177,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setFavorites([]);
   };
 
+  const resetPassword = async (email: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error('Password reset error:', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Exception during password reset:', err);
+      return false;
+    }
+  };
+
   const addToFavorites = async (offerId: string) => {
     if (!user) return;
 
@@ -210,16 +228,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return favorites.includes(offerId);
   };
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      register, 
-      logout, 
-      isLoading, 
-      favorites, 
-      addToFavorites, 
-      removeFromFavorites, 
-      isFavorite 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      register,
+      logout,
+      resetPassword,
+      isLoading,
+      favorites,
+      addToFavorites,
+      removeFromFavorites,
+      isFavorite
     }}>
       {children}
     </AuthContext.Provider>

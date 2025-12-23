@@ -68,6 +68,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
+  resetPassword: (email: string) => Promise<boolean>;
   isLoading: boolean;
   favorites: string[];
   addToFavorites: (offerId: string) => void;

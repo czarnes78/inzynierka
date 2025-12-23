@@ -8,7 +8,11 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const { login, resetPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,6 +38,26 @@ const Login: React.FC = () => {
     } catch (err) {
       console.error('Login exception:', err);
       setError('Wystąpił błąd podczas logowania');
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setResetSuccess(false);
+
+    if (!resetEmail) {
+      setResetError('Wprowadź adres e-mail');
+      return;
+    }
+
+    const success = await resetPassword(resetEmail);
+
+    if (success) {
+      setResetSuccess(true);
+      setResetEmail('');
+    } else {
+      setResetError('Nie udało się wysłać linku resetującego hasło');
     }
   };
 
@@ -134,9 +158,13 @@ const Login: React.FC = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                <button
+                  type="button"
+                  onClick={() => setShowResetPassword(true)}
+                  className="font-medium text-blue-600 hover:text-blue-500"
+                >
                   Zapomniałeś hasła?
-                </a>
+                </button>
               </div>
             </div>
 
@@ -160,6 +188,83 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showResetPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Resetuj hasło</h3>
+
+            {resetSuccess ? (
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                  Link do resetowania hasła został wysłany na podany adres e-mail.
+                </div>
+                <button
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setResetSuccess(false);
+                  }}
+                  className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors duration-200"
+                >
+                  Zamknij
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Podaj swój adres e-mail, a wyślemy Ci link do resetowania hasła.
+                </p>
+
+                {resetError && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                    {resetError}
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Adres e-mail
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="reset-email"
+                      type="email"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="appearance-none rounded-md relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="Wprowadź swój e-mail"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowResetPassword(false);
+                      setResetError('');
+                      setResetEmail('');
+                    }}
+                    className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors duration-200"
+                  >
+                    Wyślij link
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
