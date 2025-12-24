@@ -122,6 +122,7 @@ function analyzeIntent(message: string) {
     tripType: null,
     maxPrice: null,
     lastMinute: false,
+    questionType: null, // 'reservation', 'recommended', 'family', 'last_minute', 'budget'
   };
 
   // Słownik krajów
@@ -145,6 +146,9 @@ function analyzeIntent(message: string) {
     'zea': 'ZEA',
     'dubaj': 'ZEA',
     'polsk': 'Polska',
+    'węgr': 'Węgry',
+    'wegr': 'Węgry',
+    'czec': 'Czechy',
   };
 
   // Słownik destynacji
@@ -177,6 +181,8 @@ function analyzeIntent(message: string) {
     'zakopan': 'Zakopane',
     'gdańsk': 'Gdańsk',
     'kraków': 'Kraków',
+    'prag': 'Praga',
+    'budapes': 'Budapeszt',
   };
 
   // Typy wycieczek
@@ -231,15 +237,129 @@ function analyzeIntent(message: string) {
     intent.lastMinute = true;
   }
 
+  // Rozpoznaj typ pytania
+  if (message.includes('rezerwacj') || message.includes('zarezerwow') || message.includes('jak zarezerwować') || message.includes('jak dokona')) {
+    intent.questionType = 'reservation';
+  } else if (message.includes('poleca') || message.includes('najlep') || message.includes('jaki kierunek') || message.includes('gdzie pojechać') || message.includes('teraz najlep')) {
+    intent.questionType = 'recommended';
+  } else if (message.includes('rodzin') || message.includes('dziec')) {
+    intent.questionType = 'family';
+    intent.tripType = 'family';
+  } else if (message.includes('last minute') || message.includes('lastminute')) {
+    intent.questionType = 'last_minute';
+    intent.lastMinute = true;
+  } else if (message.includes('budżet') || message.includes('budzet') || priceMatch) {
+    intent.questionType = 'budget';
+  }
+
   return intent;
 }
 
 function generateResponse(intent: any, offers: Offer[], originalMessage: string): string {
-  if (offers.length === 0) {
-    return 'Przepraszam, nie znalazłem ofert dokładnie pasujących do Twoich kryteriów. Spróbuj zmienić parametry wyszukiwania lub zapytać o inne kierunki.';
+  let response = '';
+
+  // Odpowiedzi na konkretne pytania
+  if (intent.questionType === 'reservation') {
+    response = '📝 Rezerwacja jest bardzo prosta! Wystarczy:\n\n';
+    response += '1️⃣ Wybierz interesującą Cię ofertę\n';
+    response += '2️⃣ Kliknij przycisk "Zarezerwuj"\n';
+    response += '3️⃣ Wypełnij formularz z danymi uczestników\n';
+    response += '4️⃣ Dokonaj płatności online\n';
+    response += '5️⃣ Otrzymasz potwierdzenie na email\n\n';
+
+    if (offers.length > 0) {
+      response += `Oto ${offers.length} ${offers.length === 1 ? 'popularna oferta' : 'popularne oferty'}, które możesz od razu zarezerwować:`;
+    } else {
+      response += 'Możesz przejrzeć wszystkie dostępne oferty i wybrać odpowiednią dla siebie!';
+    }
+    return response;
   }
 
-  let response = '';
+  if (intent.questionType === 'recommended') {
+    const currentMonth = new Date().getMonth(); // 0-11
+    let seasonalInfo = '';
+
+    // Grudzień = 11
+    if (currentMonth === 11 || currentMonth === 0 || currentMonth === 1) {
+      seasonalInfo = '❄️ W tym okresie polecam:\n\n';
+      seasonalInfo += '🎿 Zakopane - idealne na narty i snowboard\n';
+      seasonalInfo += '🌴 Egipt - ciepłe słońce i rajskie plaże\n';
+      seasonalInfo += '✨ Praga i Budapeszt - magiczne świąteczne rynki\n\n';
+    } else if (currentMonth >= 2 && currentMonth <= 4) {
+      seasonalInfo = '🌸 Na wiosnę polecam:\n\n';
+      seasonalInfo += '🌺 Grecję - piękna pogoda, mniej turystów\n';
+      seasonalInfo += '🏛️ Włochy - idealne na zwiedzanie\n';
+      seasonalInfo += '🌷 Hiszpanię - przyjemne temperatury\n\n';
+    } else if (currentMonth >= 5 && currentMonth <= 8) {
+      seasonalInfo = '☀️ Latem najlepsze są:\n\n';
+      seasonalInfo += '🏖️ Grecja - piękne plaże i wyspy\n';
+      seasonalInfo += '🌊 Chorwacja - krystalicznie czyste morze\n';
+      seasonalInfo += '🏝️ Tajlandia - egzotyczne wakacje\n\n';
+    } else {
+      seasonalInfo = '🍂 Jesienią polecam:\n\n';
+      seasonalInfo += '🌅 Egipt - gorące słońce, brak upałów\n';
+      seasonalInfo += '🎨 Włochy - doskonałe na zwiedzanie\n';
+      seasonalInfo += '🏔️ Maroko - fascynująca kultura\n\n';
+    }
+
+    response = seasonalInfo;
+
+    if (offers.length > 0) {
+      response += `Znalazłem dla Ciebie ${offers.length} świetne ${offers.length === 1 ? 'ofertę' : 'oferty'} na ten okres:`;
+    }
+    return response;
+  }
+
+  if (intent.questionType === 'family') {
+    response = '👨‍👩‍👧‍👦 Dla rodzin z dziećmi polecam oferty, które oferują:\n\n';
+    response += '✅ Atrakcje dla dzieci i aquaparki\n';
+    response += '✅ Animacje i kluby dla młodszych\n';
+    response += '✅ Bezpieczne, płytkie plaże\n';
+    response += '✅ Hotele z wyżywieniem all inclusive\n\n';
+
+    if (offers.length > 0) {
+      response += `Oto ${offers.length} idealne ${offers.length === 1 ? 'propozycja' : 'propozycje'} dla Twojej rodziny:`;
+    } else {
+      response += 'Sprawdź nasze oferty rodzinne - znajdziesz tam wiele wspaniałych propozycji!';
+    }
+    return response;
+  }
+
+  if (intent.questionType === 'last_minute') {
+    response = '⚡ Tak! Mamy świetne oferty Last Minute!\n\n';
+    response += '✨ Wyjazd już za kilka dni\n';
+    response += '💰 Ceny nawet o 50% niższe\n';
+    response += '🎯 Sprawdzone hotele i destynacje\n\n';
+
+    if (offers.length > 0) {
+      response += `Znalazłem ${offers.length} gorące ${offers.length === 1 ? 'ofertę' : 'oferty'} Last Minute:`;
+    } else {
+      response += 'Sprawdź naszą sekcję Last Minute - oferty dodajemy codziennie!';
+    }
+    return response;
+  }
+
+  if (intent.questionType === 'budget') {
+    response = '💰 Oczywiście! Możesz znaleźć wycieczki w każdym budżecie.\n\n';
+
+    if (intent.maxPrice) {
+      response += `💵 Dla budżetu do ${intent.maxPrice} zł mamy wiele świetnych opcji!\n\n`;
+    }
+
+    response += '💡 Wskazówka: Oferty Last Minute często mają najlepsze ceny!\n\n';
+
+    if (offers.length > 0) {
+      response += `Znalazłem ${offers.length} ${offers.length === 1 ? 'ofertę' : 'oferty'} dopasowane do Twojego budżetu:`;
+    } else {
+      response += 'Sprecyzuj swój budżet, a znajdę dla Ciebie najlepsze oferty!';
+    }
+    return response;
+  }
+
+  // Standardowe odpowiedzi dla wyszukiwania
+  if (offers.length === 0) {
+    return 'Przepraszam, nie znalazłem ofert dokładnie pasujących do Twoich kryteriów. Spróbuj zmienić parametry wyszukiwania lub zapytać o inne kierunki. Możesz też zapytać o oferty Last Minute lub propozycje dla rodzin!';
+  }
 
   if (intent.country) {
     response = `Świetnie! Znalazłem dla Ciebie ${offers.length} ${offers.length === 1 ? 'ofertę' : 'oferty'} wycieczek do ${intent.country}. `;
@@ -249,8 +369,6 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
     response = `Idealnie! Przygotowałem ${offers.length} relaksujące ${offers.length === 1 ? 'ofertę' : 'oferty'} dla Ciebie. `;
   } else if (intent.tripType === 'adventure') {
     response = `Kochasz przygody! Oto ${offers.length} pełne adrenaliny ${offers.length === 1 ? 'wycieczka' : 'wycieczki'}. `;
-  } else if (intent.tripType === 'family') {
-    response = `Rodzinne wakacje to świetny pomysł! Mam ${offers.length} ${offers.length === 1 ? 'ofertę' : 'oferty'} idealną dla rodzin z dziećmi. `;
   } else if (intent.lastMinute) {
     response = `Świetnie! Znalazłem ${offers.length} promocyjne oferty Last Minute. `;
   } else {
