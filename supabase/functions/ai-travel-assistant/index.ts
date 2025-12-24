@@ -75,14 +75,21 @@ Deno.serve(async (req: Request) => {
     // Ogranicz wyniki
     query = query.limit(3);
 
-    const { data: offers, error } = await query;
+    const { data: rawOffers, error } = await query;
 
     if (error) {
       throw error;
     }
 
+    // Przekształć oferty na odpowiedni format
+    const offers = (rawOffers || []).map((offer: any) => ({
+      ...offer,
+      image_url: offer.images && offer.images.length > 0 ? offer.images[0] : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
+      duration: `${offer.duration} dni`,
+    }));
+
     // Generuj odpowiedź
-    const response = generateResponse(intent, offers || [], message);
+    const response = generateResponse(intent, offers, message);
 
     return new Response(
       JSON.stringify({
@@ -260,12 +267,12 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
 
   // Odpowiedzi na konkretne pytania
   if (intent.questionType === 'reservation') {
-    response = '📝 Rezerwacja jest bardzo prosta! Wystarczy:\n\n';
-    response += '1️⃣ Wybierz interesującą Cię ofertę\n';
-    response += '2️⃣ Kliknij przycisk "Zarezerwuj"\n';
-    response += '3️⃣ Wypełnij formularz z danymi uczestników\n';
-    response += '4️⃣ Dokonaj płatności online\n';
-    response += '5️⃣ Otrzymasz potwierdzenie na email\n\n';
+    response = 'Rezerwacja jest bardzo prosta! Wystarczy:\n\n';
+    response += '1. Wybierz interesującą Cię ofertę\n';
+    response += '2. Kliknij przycisk "Zarezerwuj"\n';
+    response += '3. Wypełnij formularz z danymi uczestników\n';
+    response += '4. Dokonaj płatności online\n';
+    response += '5. Otrzymasz potwierdzenie na email\n\n';
 
     if (offers.length > 0) {
       response += `Oto ${offers.length} ${offers.length === 1 ? 'popularna oferta' : 'popularne oferty'}, które możesz od razu zarezerwować:`;
@@ -281,25 +288,25 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
 
     // Grudzień = 11
     if (currentMonth === 11 || currentMonth === 0 || currentMonth === 1) {
-      seasonalInfo = '❄️ W tym okresie polecam:\n\n';
-      seasonalInfo += '🎿 Zakopane - idealne na narty i snowboard\n';
-      seasonalInfo += '🌴 Egipt - ciepłe słońce i rajskie plaże\n';
-      seasonalInfo += '✨ Praga i Budapeszt - magiczne świąteczne rynki\n\n';
+      seasonalInfo = 'W tym okresie polecam:\n\n';
+      seasonalInfo += '1. Zakopane - idealne na narty i snowboard\n';
+      seasonalInfo += '2. Egipt - ciepłe słońce i rajskie plaże\n';
+      seasonalInfo += '3. Praga i Budapeszt - magiczne świąteczne rynki\n\n';
     } else if (currentMonth >= 2 && currentMonth <= 4) {
-      seasonalInfo = '🌸 Na wiosnę polecam:\n\n';
-      seasonalInfo += '🌺 Grecję - piękna pogoda, mniej turystów\n';
-      seasonalInfo += '🏛️ Włochy - idealne na zwiedzanie\n';
-      seasonalInfo += '🌷 Hiszpanię - przyjemne temperatury\n\n';
+      seasonalInfo = 'Na wiosnę polecam:\n\n';
+      seasonalInfo += '1. Grecję - piękna pogoda, mniej turystów\n';
+      seasonalInfo += '2. Włochy - idealne na zwiedzanie\n';
+      seasonalInfo += '3. Hiszpanię - przyjemne temperatury\n\n';
     } else if (currentMonth >= 5 && currentMonth <= 8) {
-      seasonalInfo = '☀️ Latem najlepsze są:\n\n';
-      seasonalInfo += '🏖️ Grecja - piękne plaże i wyspy\n';
-      seasonalInfo += '🌊 Chorwacja - krystalicznie czyste morze\n';
-      seasonalInfo += '🏝️ Tajlandia - egzotyczne wakacje\n\n';
+      seasonalInfo = 'Latem najlepsze są:\n\n';
+      seasonalInfo += '1. Grecja - piękne plaże i wyspy\n';
+      seasonalInfo += '2. Chorwacja - krystalicznie czyste morze\n';
+      seasonalInfo += '3. Tajlandia - egzotyczne wakacje\n\n';
     } else {
-      seasonalInfo = '🍂 Jesienią polecam:\n\n';
-      seasonalInfo += '🌅 Egipt - gorące słońce, brak upałów\n';
-      seasonalInfo += '🎨 Włochy - doskonałe na zwiedzanie\n';
-      seasonalInfo += '🏔️ Maroko - fascynująca kultura\n\n';
+      seasonalInfo = 'Jesienią polecam:\n\n';
+      seasonalInfo += '1. Egipt - gorące słońce, brak upałów\n';
+      seasonalInfo += '2. Włochy - doskonałe na zwiedzanie\n';
+      seasonalInfo += '3. Maroko - fascynująca kultura\n\n';
     }
 
     response = seasonalInfo;
@@ -311,11 +318,11 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
   }
 
   if (intent.questionType === 'family') {
-    response = '👨‍👩‍👧‍👦 Dla rodzin z dziećmi polecam oferty, które oferują:\n\n';
-    response += '✅ Atrakcje dla dzieci i aquaparki\n';
-    response += '✅ Animacje i kluby dla młodszych\n';
-    response += '✅ Bezpieczne, płytkie plaże\n';
-    response += '✅ Hotele z wyżywieniem all inclusive\n\n';
+    response = 'Dla rodzin z dziećmi polecam oferty, które oferują:\n\n';
+    response += '1. Atrakcje dla dzieci i aquaparki\n';
+    response += '2. Animacje i kluby dla młodszych\n';
+    response += '3. Bezpieczne, płytkie plaże\n';
+    response += '4. Hotele z wyżywieniem all inclusive\n\n';
 
     if (offers.length > 0) {
       response += `Oto ${offers.length} idealne ${offers.length === 1 ? 'propozycja' : 'propozycje'} dla Twojej rodziny:`;
@@ -326,10 +333,10 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
   }
 
   if (intent.questionType === 'last_minute') {
-    response = '⚡ Tak! Mamy świetne oferty Last Minute!\n\n';
-    response += '✨ Wyjazd już za kilka dni\n';
-    response += '💰 Ceny nawet o 50% niższe\n';
-    response += '🎯 Sprawdzone hotele i destynacje\n\n';
+    response = 'Tak! Mamy świetne oferty Last Minute!\n\n';
+    response += '1. Wyjazd już za kilka dni\n';
+    response += '2. Ceny nawet o 50% niższe\n';
+    response += '3. Sprawdzone hotele i destynacje\n\n';
 
     if (offers.length > 0) {
       response += `Znalazłem ${offers.length} gorące ${offers.length === 1 ? 'ofertę' : 'oferty'} Last Minute:`;
@@ -340,13 +347,13 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
   }
 
   if (intent.questionType === 'budget') {
-    response = '💰 Oczywiście! Możesz znaleźć wycieczki w każdym budżecie.\n\n';
+    response = 'Oczywiście! Możesz znaleźć wycieczki w każdym budżecie.\n\n';
 
     if (intent.maxPrice) {
-      response += `💵 Dla budżetu do ${intent.maxPrice} zł mamy wiele świetnych opcji!\n\n`;
+      response += `Dla budżetu do ${intent.maxPrice} zł mamy wiele świetnych opcji!\n\n`;
     }
 
-    response += '💡 Wskazówka: Oferty Last Minute często mają najlepsze ceny!\n\n';
+    response += 'Wskazówka: Oferty Last Minute często mają najlepsze ceny!\n\n';
 
     if (offers.length > 0) {
       response += `Znalazłem ${offers.length} ${offers.length === 1 ? 'ofertę' : 'oferty'} dopasowane do Twojego budżetu:`;
