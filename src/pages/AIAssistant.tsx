@@ -35,12 +35,12 @@ const AIAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const sampleQuestions = [
-    "Egipt",
-    "Jaka wycieczka do Grecji?",
-    "Maroko",
-    "Pokaż oferty do Tajlandii",
-    "Last minute do Hiszpanii",
-    "Wycieczki do 2500 zł"
+    "Jak dokonać rezerwacji?",
+    "Co polecasz?",
+    "Oferty dla rodziny",
+    "Macie last minute?",
+    "Szukam tanich ofert",
+    "Wycieczki do Egiptu"
   ];
 
   const handleSend = async () => {
