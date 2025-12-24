@@ -47,33 +47,38 @@ Deno.serve(async (req: Request) => {
       .from('offers')
       .select('*');
 
-    // Filtruj według kraju
-    if (intent.country) {
-      query = query.ilike('country', `%${intent.country}%`);
-    }
+    // Specjalna logika dla pytań o rezerwację - pokaż tanie oferty do Włoch i Norwegii
+    if (intent.questionType === 'reservation') {
+      query = query.in('country', ['Włochy', 'Norwegia']).order('price', { ascending: true }).limit(3);
+    } else {
+      // Filtruj według kraju
+      if (intent.country) {
+        query = query.ilike('country', `%${intent.country}%`);
+      }
 
-    // Filtruj według destynacji
-    if (intent.destination) {
-      query = query.ilike('destination', `%${intent.destination}%`);
-    }
+      // Filtruj według destynacji
+      if (intent.destination) {
+        query = query.ilike('destination', `%${intent.destination}%`);
+      }
 
-    // Filtruj według typu wycieczki
-    if (intent.tripType) {
-      query = query.eq('trip_type', intent.tripType);
-    }
+      // Filtruj według typu wycieczki
+      if (intent.tripType) {
+        query = query.eq('trip_type', intent.tripType);
+      }
 
-    // Filtruj według budżetu
-    if (intent.maxPrice) {
-      query = query.lte('price', intent.maxPrice);
-    }
+      // Filtruj według budżetu
+      if (intent.maxPrice) {
+        query = query.lte('price', intent.maxPrice);
+      }
 
-    // Filtruj last minute
-    if (intent.lastMinute) {
-      query = query.eq('is_last_minute', true);
-    }
+      // Filtruj last minute
+      if (intent.lastMinute) {
+        query = query.eq('is_last_minute', true);
+      }
 
-    // Ogranicz wyniki
-    query = query.limit(3);
+      // Ogranicz wyniki
+      query = query.limit(3);
+    }
 
     const { data: rawOffers, error } = await query;
 
@@ -299,12 +304,7 @@ function generateResponse(intent: any, offers: Offer[], originalMessage: string)
     response += '3. Wypełnij formularz z danymi uczestników\n';
     response += '4. Dokonaj płatności online\n';
     response += '5. Otrzymasz potwierdzenie na email\n\n';
-
-    if (offers.length > 0) {
-      response += `Oto ${offers.length} ${offers.length === 1 ? 'popularna oferta' : 'popularne oferty'}, które możesz od razu zarezerwować:`;
-    } else {
-      response += 'Możesz przejrzeć wszystkie dostępne oferty i wybrać odpowiednią dla siebie!';
-    }
+    response += 'Polecam Ci nasze tanie oferty do Włoch i Norwegii:';
     return response;
   }
 
