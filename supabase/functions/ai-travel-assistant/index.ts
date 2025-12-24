@@ -234,9 +234,35 @@ function analyzeIntent(message: string) {
   }
 
   // Wyszukaj budżet
-  const priceMatch = message.match(/(\d+)\s*(?:zł|zloty|zlotych)/i);
-  if (priceMatch) {
-    intent.maxPrice = parseInt(priceMatch[1]);
+  let maxPrice = null;
+
+  // Próbuj różne formaty ceny
+  // Format: "4k", "4tys" -> 4000
+  const kMatch = message.match(/(\d+)\s*(?:k|tys)/i);
+  if (kMatch) {
+    maxPrice = parseInt(kMatch[1]) * 1000;
+  }
+
+  // Format: "4000 zł", "4000 złotych", "4000 zloty"
+  const zlMatch = message.match(/(\d+)\s*(?:zł|zloty|zlotych)/i);
+  if (zlMatch && !maxPrice) {
+    maxPrice = parseInt(zlMatch[1]);
+  }
+
+  // Format: "do 4000", "maksymalnie 4000", "max 4000"
+  const numMatch = message.match(/(?:do|maksymalnie|max|maximum)\s*(\d+)/i);
+  if (numMatch && !maxPrice) {
+    maxPrice = parseInt(numMatch[1]);
+  }
+
+  // Samo "4000" w kontekście budżetu
+  const plainNumMatch = message.match(/bud[żz]et[^0-9]*(\d+)/i);
+  if (plainNumMatch && !maxPrice) {
+    maxPrice = parseInt(plainNumMatch[1]);
+  }
+
+  if (maxPrice) {
+    intent.maxPrice = maxPrice;
   }
 
   // Last minute
@@ -255,7 +281,7 @@ function analyzeIntent(message: string) {
   } else if (message.includes('last minute') || message.includes('lastminute')) {
     intent.questionType = 'last_minute';
     intent.lastMinute = true;
-  } else if (message.includes('budżet') || message.includes('budzet') || priceMatch) {
+  } else if (message.includes('budżet') || message.includes('budzet') || message.includes('cena') || message.includes('do 4') || message.includes('do 3') || message.includes('tani') || message.includes('tanio') || message.includes('niedrogi') || maxPrice) {
     intent.questionType = 'budget';
   }
 
