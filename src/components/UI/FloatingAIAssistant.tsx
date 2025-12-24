@@ -35,10 +35,10 @@ const FloatingAIAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const sampleQuestions = [
-    "Egipt",
-    "Wycieczka do Grecji",
-    "Pokazać oferty do Maroka",
-    "Co polecasz na Tajlandię?"
+    "Jak dokonać rezerwacji?",
+    "Jakie oferty polecacie dla rodzin z dziećmi?",
+    "Czy macie oferty last minute?",
+    "Czy mogę znaleźć wycieczkę do 3000 zł?"
   ];
 
   const handleSend = async () => {
@@ -163,33 +163,38 @@ const FloatingAIAssistant: React.FC = () => {
                         <span className="text-xs font-medium text-purple-600">AI</span>
                       </div>
                     )}
-                    <p>{message.content}</p>
+                    <p className="whitespace-pre-line">{message.content}</p>
                   </div>
                 </div>
 
                 {/* Show offers */}
                 {message.offers && message.offers.length > 0 && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-3">
                     {message.offers.map(offer => (
                       <a
                         key={offer.id}
                         href={`/offer/${offer.id}`}
-                        className="block bg-gray-50 rounded-lg p-2 hover:bg-gray-100 transition-colors duration-200"
+                        className="block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200"
                       >
-                        <div className="flex items-center space-x-2">
-                          <img
-                            src={offer.image_url}
-                            alt={offer.title}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                          <div className="flex-1">
-                            <h4 className="text-xs font-semibold text-gray-900 line-clamp-1">
-                              {offer.title}
-                            </h4>
-                            <p className="text-xs text-gray-600">{offer.destination}, {offer.country}</p>
-                            <p className="text-xs font-bold text-blue-600">
+                        <img
+                          src={offer.image_url}
+                          alt={offer.title}
+                          className="w-full h-32 object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
+                          }}
+                        />
+                        <div className="p-3">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                            {offer.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 mb-2">{offer.destination}, {offer.country}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-bold text-blue-600">
                               {offer.price.toLocaleString('pl-PL')} zł
                             </p>
+                            <span className="text-xs text-gray-500">{offer.duration}</span>
                           </div>
                         </div>
                       </a>
