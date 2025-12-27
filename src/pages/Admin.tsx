@@ -5,6 +5,7 @@ import { fetchAllOffers, fetchOfferById } from '../services/offerService';
 import { fetchAllReservations, updateReservationStatus } from '../services/reservationService';
 import { fetchAllUsers, deleteUser as deleteUserService, getUserStats } from '../services/userService';
 import { fetchAdminStats, deleteOffer as deleteOfferService, AdminStats } from '../services/adminService';
+import { supabase } from '../lib/supabase';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'offers' | 'reservations' | 'users' | 'analytics' | 'settings'>('dashboard');
@@ -122,32 +123,46 @@ const Admin: React.FC = () => {
   };
 
   const handleAddOffer = () => {
-    // Mock add offer functionality
-    const newOffer: Offer = {
-      id: Date.now().toString(),
-      title: 'Nowa oferta',
-      description: 'Opis nowej oferty',
-      shortDescription: 'Krótki opis',
-      destination: 'Nowy kierunek',
-      country: 'Nowy kraj',
-      duration: 7,
-      price: 2000,
-      images: ['https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg'],
-      meals: 'BB',
-      tripType: 'relax',
-      season: 'summer',
-      isLastMinute: false,
-      availableDates: [new Date()],
-      itinerary: [],
-      accommodation: 'Hotel 4*',
-      transport: 'Samolot',
-      rating: 4.0,
-      reviewCount: 0,
-      createdAt: new Date()
-    };
-    setOffers([...offers, newOffer]);
     setShowAddOfferModal(false);
-    alert('Nowa oferta została dodana!');
+    alert('Funkcja dodawania ofert będzie wkrótce dostępna');
+  };
+
+  const handleEditOffer = (offer: Offer) => {
+    setEditingOffer(offer);
+  };
+
+  const handleSaveOffer = async () => {
+    if (!editingOffer) return;
+
+    const { data, error } = await supabase
+      .from('offers')
+      .update({
+        title: editingOffer.title,
+        description: editingOffer.description,
+        short_description: editingOffer.shortDescription,
+        destination: editingOffer.destination,
+        country: editingOffer.country,
+        duration: editingOffer.duration,
+        price: editingOffer.price,
+        meals: editingOffer.meals,
+        trip_type: editingOffer.tripType,
+        season: editingOffer.season,
+        is_last_minute: editingOffer.isLastMinute,
+        accommodation: editingOffer.accommodation,
+        transport: editingOffer.transport
+      })
+      .eq('id', editingOffer.id);
+
+    if (error) {
+      alert('Nie udało się zaktualizować oferty');
+      console.error('Error updating offer:', error);
+      return;
+    }
+
+    setOffers(offers.map(o => o.id === editingOffer.id ? editingOffer : o));
+    setEditingOffer(null);
+    alert('Oferta została zaktualizowana');
+    loadData();
   };
 
   const filteredUsers = users.filter(user =>
@@ -388,7 +403,7 @@ const Admin: React.FC = () => {
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => setEditingOffer(offer)}
+                        onClick={() => handleEditOffer(offer)}
                         className="text-blue-600 hover:text-blue-800"
                         title="Edytuj ofertę"
                       >
@@ -417,26 +432,180 @@ const Admin: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Offer Modal */}
-      {showAddOfferModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Dodaj nową ofertę</h3>
-            <p className="text-gray-600 mb-6">
-              Czy chcesz dodać nową ofertę do systemu?
-            </p>
-            <div className="flex space-x-3">
+      {/* Edit Offer Modal */}
+      {editingOffer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full p-6 my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Edytuj ofertę</h3>
               <button
-                onClick={handleAddOffer}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                onClick={() => setEditingOffer(null)}
+                className="text-gray-400 hover:text-gray-600"
               >
-                Dodaj
+                <X className="h-6 w-6" />
               </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tytuł</label>
+                <input
+                  type="text"
+                  value={editingOffer.title}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kierunek</label>
+                <input
+                  type="text"
+                  value={editingOffer.destination}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, destination: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kraj</label>
+                <input
+                  type="text"
+                  value={editingOffer.country}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, country: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Czas trwania (dni)</label>
+                <input
+                  type="number"
+                  value={editingOffer.duration}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, duration: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cena (zł)</label>
+                <input
+                  type="number"
+                  value={editingOffer.price}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, price: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Wyżywienie</label>
+                <select
+                  value={editingOffer.meals}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, meals: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="BB">BB - Śniadania</option>
+                  <option value="HB">HB - Śniadania i obiadokolacje</option>
+                  <option value="FB">FB - Pełne wyżywienie</option>
+                  <option value="AI">AI - All Inclusive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Typ wycieczki</label>
+                <select
+                  value={editingOffer.tripType}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, tripType: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="relax">Relax</option>
+                  <option value="adventure">Przygoda</option>
+                  <option value="city">Miasto</option>
+                  <option value="culture">Kultura</option>
+                  <option value="nature">Natura</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sezon</label>
+                <select
+                  value={editingOffer.season}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, season: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="summer">Lato</option>
+                  <option value="winter">Zima</option>
+                  <option value="spring">Wiosna</option>
+                  <option value="autumn">Jesień</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Zakwaterowanie</label>
+                <input
+                  type="text"
+                  value={editingOffer.accommodation}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, accommodation: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Transport</label>
+                <input
+                  type="text"
+                  value={editingOffer.transport}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, transport: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Krótki opis</label>
+                <textarea
+                  value={editingOffer.shortDescription}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, shortDescription: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pełny opis</label>
+                <textarea
+                  value={editingOffer.description}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isLastMinute"
+                  checked={editingOffer.isLastMinute}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, isLastMinute: e.target.checked })}
+                  className="rounded mr-2"
+                />
+                <label htmlFor="isLastMinute" className="text-sm font-medium text-gray-700">
+                  Last Minute
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
               <button
-                onClick={() => setShowAddOfferModal(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+                onClick={() => setEditingOffer(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Anuluj
+              </button>
+              <button
+                onClick={handleSaveOffer}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Zapisz zmiany
               </button>
             </div>
           </div>
@@ -480,6 +649,7 @@ const Admin: React.FC = () => {
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">ID</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Oferta</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Klient</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-900">Data wyjazdu</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Osoby</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Cena</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
@@ -489,14 +659,14 @@ const Admin: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={8} className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
                     <p className="text-gray-600">Ładowanie rezerwacji...</p>
                   </td>
                 </tr>
               ) : filteredReservations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={8} className="text-center py-12">
                     <p className="text-gray-600">Brak rezerwacji do wyświetlenia</p>
                   </td>
                 </tr>
@@ -513,6 +683,9 @@ const Admin: React.FC = () => {
                     <td className="py-3 px-4">
                       <p className="font-medium text-gray-900">{user?.name || 'Brak danych'}</p>
                       <p className="text-sm text-gray-600">{user?.email || '-'}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="text-gray-900">{reservation.departureDate.toLocaleDateString('pl-PL')}</p>
                     </td>
                     <td className="py-3 px-4">{reservation.guests}</td>
                     <td className="py-3 px-4 font-medium">
