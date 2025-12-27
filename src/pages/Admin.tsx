@@ -1,82 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Package, BarChart3, Settings, Plus, CreditCard as Edit, Trash2, Eye, Search, Filter, Calendar, MapPin, Star, TrendingUp, DollarSign, Globe, Plane, Mail, Phone, CheckCircle, XCircle, Clock, AlertTriangle, X } from 'lucide-react';
-import { mockOffers, mockReservations } from '../data/mockData';
 import { Offer, Reservation, User } from '../types';
+import { fetchAllOffers, fetchOfferById } from '../services/offerService';
+import { fetchAllReservations, updateReservationStatus } from '../services/reservationService';
+import { fetchAllUsers, deleteUser as deleteUserService, getUserStats } from '../services/userService';
+import { fetchAdminStats, deleteOffer as deleteOfferService, AdminStats } from '../services/adminService';
 
 const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'offers' | 'reservations' | 'users' | 'analytics' | 'settings'>('dashboard');
-  const [offers, setOffers] = useState<Offer[]>(mockOffers);
-  const [reservations, setReservations] = useState<Reservation[]>(mockReservations);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showAddOfferModal, setShowAddOfferModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUserStats, setSelectedUserStats] = useState<{ reservationsCount: number; totalSpent: number } | null>(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
+  const [reservationOffers, setReservationOffers] = useState<{ [key: string]: Offer }>({});
 
-  // Mock users data
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      email: 'admin@travel.pl',
-      name: 'Administrator',
-      role: 'admin',
-      createdAt: new Date('2024-01-01')
-    },
-    {
-      id: '2',
-      email: 'user@travel.pl',
-      name: 'Jan Kowalski',
-      role: 'client',
-      createdAt: new Date('2024-01-15')
-    },
-    {
-      id: '3',
-      email: 'anna.nowak@email.com',
-      name: 'Anna Nowak',
-      role: 'client',
-      createdAt: new Date('2024-02-01')
-    },
-    {
-      id: '4',
-      email: 'piotr.wisniewski@email.com',
-      name: 'Piotr Wiśniewski',
-      role: 'client',
-      createdAt: new Date('2024-02-15')
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    setSearchTerm('');
+    setFilterStatus('all');
+  }, [activeTab]);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [offersData, reservationsData, usersData, statsData] = await Promise.all([
+      fetchAllOffers(),
+      fetchAllReservations(),
+      fetchAllUsers(),
+      fetchAdminStats()
+    ]);
+
+    setOffers(offersData);
+    setReservations(reservationsData);
+    setUsers(usersData);
+    setStats(statsData);
+
+    const offersMap: { [key: string]: Offer } = {};
+    for (const reservation of reservationsData) {
+      if (!offersMap[reservation.offerId]) {
+        const offer = await fetchOfferById(reservation.offerId);
+        if (offer) {
+          offersMap[reservation.offerId] = offer;
+        }
+      }
     }
-  ];
+    setReservationOffers(offersMap);
 
-  const [users, setUsers] = useState<User[]>(mockUsers);
+    setLoading(false);
+  };
 
-  // Statistics
-  const totalRevenue = reservations
-    .filter(r => r.status === 'confirmed')
-    .reduce((sum, r) => sum + r.totalPrice, 0);
-  
-  const totalReservations = reservations.length;
-  const confirmedReservations = reservations.filter(r => r.status === 'confirmed').length;
-  const pendingReservations = reservations.filter(r => r.status === 'blocked').length;
+  const totalRevenue = stats?.totalRevenue || 0;
+  const totalReservations = stats?.totalReservations || 0;
+  const confirmedReservations = stats?.confirmedReservations || 0;
+  const pendingReservations = stats?.blockedReservations || 0;
 
-  const handleDeleteOffer = (id: string) => {
+  const handleDeleteOffer = async (id: string) => {
     if (confirm('Czy na pewno chcesz usunąć tę ofertę?')) {
-      setOffers(offers.filter(offer => offer.id !== id));
+      const success = await deleteOfferService(id);
+      if (success) {
+        setOffers(offers.filter(offer => offer.id !== id));
+        alert('Oferta została usunięta');
+      } else {
+        alert('Nie udało się usunąć oferty');
+      }
     }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
-      setUsers(users.filter(user => user.id !== id));
-      alert('Użytkownik został usunięty');
+      const success = await deleteUserService(id);
+      if (success) {
+        setUsers(users.filter(user => user.id !== id));
+        alert('Użytkownik został usunięty');
+      } else {
+        alert('Nie udało się usunąć użytkownika');
+      }
     }
   };
 
-  const handleUpdateReservationStatus = (id: string, status: 'confirmed' | 'cancelled' | 'blocked') => {
-    setReservations(reservations.map(r => 
-      r.id === id ? { ...r, status } : r
-    ));
-    alert(`Status rezerwacji został zmieniony na: ${status === 'confirmed' ? 'Potwierdzona' : status === 'cancelled' ? 'Anulowana' : 'Zablokowana'}`);
+  const handleUpdateReservationStatus = async (id: string, status: 'confirmed' | 'cancelled' | 'blocked') => {
+    const success = await updateReservationStatus(id, status);
+    if (success) {
+      setReservations(reservations.map(r =>
+        r.id === id ? { ...r, status } : r
+      ));
+      alert(`Status rezerwacji został zmieniony na: ${status === 'confirmed' ? 'Potwierdzona' : status === 'cancelled' ? 'Anulowana' : 'Zablokowana'}`);
+      loadData();
+    } else {
+      alert('Nie udało się zmienić statusu rezerwacji');
+    }
   };
 
   const filteredReservations = reservations.filter(reservation => {
@@ -85,8 +109,10 @@ const Admin: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewUser = (user: User) => {
+  const handleViewUser = async (user: User) => {
     setSelectedUser(user);
+    const stats = await getUserStats(user.id);
+    setSelectedUserStats(stats);
     setShowUserModal(true);
   };
 
@@ -186,12 +212,16 @@ const Admin: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Ostatnie rezerwacje</h3>
           <div className="space-y-3">
-            {reservations.slice(0, 5).map(reservation => {
-              const offer = offers.find(o => o.id === reservation.offerId);
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
+              </div>
+            ) : reservations.slice(0, 5).map(reservation => {
+              const offer = reservationOffers[reservation.offerId];
               return (
                 <div key={reservation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="font-medium text-gray-900">{offer?.title}</p>
+                    <p className="font-medium text-gray-900">{offer?.title || 'Ładowanie...'}</p>
                     <p className="text-sm text-gray-600">
                       {reservation.totalPrice.toLocaleString('pl-PL')} zł
                     </p>
@@ -213,7 +243,11 @@ const Admin: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Popularne oferty</h3>
           <div className="space-y-3">
-            {offers.slice(0, 5).map(offer => (
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div>
+              </div>
+            ) : offers.slice(0, 5).map(offer => (
               <div key={offer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">{offer.title}</p>
@@ -223,7 +257,7 @@ const Admin: React.FC = () => {
                   <p className="font-medium text-blue-600">{offer.price.toLocaleString('pl-PL')} zł</p>
                   <div className="flex items-center space-x-1">
                     <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                    <span className="text-xs text-gray-600">{offer.rating}</span>
+                    <span className="text-xs text-gray-600">{offer.rating?.toFixed(1) || '0.0'}</span>
                   </div>
                 </div>
               </div>
@@ -250,7 +284,7 @@ const Admin: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-2xl font-bold text-blue-600">{offers.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{stats?.totalOffers || 0}</div>
           <div className="text-sm text-gray-600">Wszystkie oferty</div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
@@ -267,7 +301,7 @@ const Admin: React.FC = () => {
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="text-2xl font-bold text-purple-600">
-            {(offers.reduce((sum, o) => sum + o.rating, 0) / offers.length).toFixed(1)}
+            {offers.length > 0 ? (offers.reduce((sum, o) => sum + (o.rating || 0), 0) / offers.length).toFixed(1) : '0.0'}
           </div>
           <div className="text-sm text-gray-600">Średnia ocena</div>
         </div>
@@ -300,7 +334,20 @@ const Admin: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOffers.map(offer => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Ładowanie ofert...</p>
+                  </td>
+                </tr>
+              ) : filteredOffers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12">
+                    <p className="text-gray-600">Brak ofert do wyświetlenia</p>
+                  </td>
+                </tr>
+              ) : filteredOffers.map(offer => (
                 <tr key={offer.id} className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-3">
@@ -440,19 +487,32 @@ const Admin: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredReservations.map(reservation => {
-                const offer = offers.find(o => o.id === reservation.offerId);
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Ładowanie rezerwacji...</p>
+                  </td>
+                </tr>
+              ) : filteredReservations.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12">
+                    <p className="text-gray-600">Brak rezerwacji do wyświetlenia</p>
+                  </td>
+                </tr>
+              ) : filteredReservations.map(reservation => {
+                const offer = reservationOffers[reservation.offerId];
                 const user = users.find(u => u.id === reservation.userId);
                 return (
                   <tr key={reservation.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-sm">{reservation.id}</td>
+                    <td className="py-3 px-4 font-mono text-sm">{reservation.id.substring(0, 8)}...</td>
                     <td className="py-3 px-4">
-                      <p className="font-medium text-gray-900">{offer?.title}</p>
-                      <p className="text-sm text-gray-600">{offer?.destination}</p>
+                      <p className="font-medium text-gray-900">{offer?.title || 'Ładowanie...'}</p>
+                      <p className="text-sm text-gray-600">{offer?.destination || '-'}</p>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="font-medium text-gray-900">{user?.name}</p>
-                      <p className="text-sm text-gray-600">{user?.email}</p>
+                      <p className="font-medium text-gray-900">{user?.name || 'Brak danych'}</p>
+                      <p className="text-sm text-gray-600">{user?.email || '-'}</p>
                     </td>
                     <td className="py-3 px-4">{reservation.guests}</td>
                     <td className="py-3 px-4 font-medium">
@@ -502,6 +562,25 @@ const Admin: React.FC = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Zarządzanie użytkownikami</h2>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-2xl font-bold text-blue-600">{users.length}</div>
+          <div className="text-sm text-gray-600">Wszyscy użytkownicy</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-2xl font-bold text-green-600">
+            {users.filter(u => u.role === 'client').length}
+          </div>
+          <div className="text-sm text-gray-600">Klienci</div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-2xl font-bold text-purple-600">
+            {users.filter(u => u.role === 'admin').length}
+          </div>
+          <div className="text-sm text-gray-600">Administratorzy</div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="mb-4">
           <div className="relative">
@@ -529,7 +608,20 @@ const Admin: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map(user => {
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Ładowanie użytkowników...</p>
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12">
+                    <p className="text-gray-600">Brak użytkowników do wyświetlenia</p>
+                  </td>
+                </tr>
+              ) : filteredUsers.map(user => {
                 const userReservations = reservations.filter(r => r.userId === user.id);
                 return (
                   <tr key={user.id} className="border-b hover:bg-gray-50">
@@ -612,8 +704,8 @@ const Admin: React.FC = () => {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Statystyki</h4>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Rezerwacje:</strong> {reservations.filter(r => r.userId === selectedUser.id).length}</div>
-                    <div><strong>Wydane środki:</strong> {reservations.filter(r => r.userId === selectedUser.id && r.status === 'confirmed').reduce((sum, r) => sum + r.totalPrice, 0).toLocaleString('pl-PL')} zł</div>
+                    <div><strong>Rezerwacje:</strong> {selectedUserStats?.reservationsCount || 0}</div>
+                    <div><strong>Wydane środki:</strong> {(selectedUserStats?.totalSpent || 0).toLocaleString('pl-PL')} zł</div>
                     <div><strong>Status:</strong> <span className="text-green-600">Aktywny</span></div>
                   </div>
                 </div>
@@ -655,26 +747,37 @@ const Admin: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Popularne kierunki</h3>
           <div className="space-y-3">
-            {[
-              { country: 'Grecja', bookings: 45, percentage: 35 },
-              { country: 'Hiszpania', bookings: 32, percentage: 25 },
-              { country: 'Włochy', bookings: 28, percentage: 22 },
-              { country: 'Chorwacja', bookings: 15, percentage: 12 },
-              { country: 'Egipt', bookings: 8, percentage: 6 }
-            ].map(item => (
-              <div key={item.country} className="flex items-center justify-between">
-                <span className="text-gray-600">{item.country}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full" 
-                      style={{ width: `${item.percentage}%` }}
-                    ></div>
+            {(() => {
+              const countryStats = offers.reduce((acc, offer) => {
+                const country = offer.country;
+                if (!acc[country]) {
+                  acc[country] = 0;
+                }
+                acc[country]++;
+                return acc;
+              }, {} as { [key: string]: number });
+
+              const sortedCountries = Object.entries(countryStats)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+              const maxCount = sortedCountries[0]?.[1] || 1;
+
+              return sortedCountries.map(([country, count]) => (
+                <div key={country} className="flex items-center justify-between">
+                  <span className="text-gray-600">{country}</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-32 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-600 h-2 rounded-full"
+                        style={{ width: `${(count / maxCount) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">{count}</span>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{item.bookings}</span>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
       </div>
@@ -683,19 +786,31 @@ const Admin: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Kluczowe metryki</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">87%</div>
+            <div className="text-3xl font-bold text-blue-600 mb-2">
+              {stats && stats.totalReservations > 0
+                ? Math.round((stats.confirmedReservations / stats.totalReservations) * 100)
+                : 0}%
+            </div>
             <div className="text-gray-600">Współczynnik konwersji</div>
-            <div className="text-xs text-gray-500 mt-1">↑ 5% vs poprzedni miesiąc</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Potwierdzone / Wszystkie rezerwacje
+            </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">4.8</div>
+            <div className="text-3xl font-bold text-green-600 mb-2">
+              {offers.length > 0
+                ? (offers.reduce((sum, o) => sum + (o.rating || 0), 0) / offers.length).toFixed(1)
+                : '0.0'}
+            </div>
             <div className="text-gray-600">Średnia ocena</div>
-            <div className="text-xs text-gray-500 mt-1">↑ 0.2 vs poprzedni miesiąc</div>
+            <div className="text-xs text-gray-500 mt-1">Na podstawie {offers.length} ofert</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">2.3k</div>
-            <div className="text-gray-600">Aktywni użytkownicy</div>
-            <div className="text-xs text-gray-500 mt-1">↑ 12% vs poprzedni miesiąc</div>
+            <div className="text-3xl font-bold text-purple-600 mb-2">
+              {stats?.totalClients || 0}
+            </div>
+            <div className="text-gray-600">Aktywni klienci</div>
+            <div className="text-xs text-gray-500 mt-1">Zarejestrowani użytkownicy</div>
           </div>
         </div>
       </div>

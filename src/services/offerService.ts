@@ -106,6 +106,10 @@ export async function fetchOffers(filters?: SearchFilters): Promise<Offer[]> {
   return offers.filter((offer): offer is Offer => offer !== null);
 }
 
+export async function fetchAllOffers(): Promise<Offer[]> {
+  return fetchOffers();
+}
+
 export async function fetchOfferById(id: string): Promise<Offer | null> {
   const { data: offer, error } = await supabase
     .from('offers')
