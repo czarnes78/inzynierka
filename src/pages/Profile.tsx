@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, CreditCard, Settings, Bell, Shield, CreditCard as Edit, Save, X, Eye, Download, Star, Clock, CheckCircle, AlertTriangle, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Calendar, CreditCard, Settings, Bell, Shield, CreditCard as Edit, Save, X, Eye, Download, Star, Clock, CheckCircle, AlertTriangle, Heart, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { mockReservations, mockOffers } from '../data/mockData';
 import OfferCard from '../components/UI/OfferCard';
+import { fetchUserReservations } from '../services/reservationService';
+import { fetchOfferById } from '../services/offerService';
+import { Reservation, Offer } from '../types';
 
 const Profile: React.FC = () => {
   const { user, favorites } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'reservations' | 'favorites' | 'settings' | 'security'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [userReservations, setUserReservations] = useState<Reservation[]>([]);
+  const [reservationOffers, setReservationOffers] = useState<{ [key: string]: Offer }>({});
+  const [favoriteOffers, setFavoriteOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
   const [passwordData, setPasswordData] = useState({
     current: '',
     new: '',
@@ -28,8 +34,42 @@ const Profile: React.FC = () => {
     }
   });
 
-  const userReservations = mockReservations.filter(r => r.userId === user?.id);
-  const favoriteOffers = mockOffers.filter(offer => favorites.includes(offer.id));
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    }
+  }, [user, favorites]);
+
+  const loadUserData = async () => {
+    if (!user) return;
+
+    setLoading(true);
+
+    const reservations = await fetchUserReservations(user.id);
+    setUserReservations(reservations);
+
+    const offersMap: { [key: string]: Offer } = {};
+    for (const reservation of reservations) {
+      if (!offersMap[reservation.offerId]) {
+        const offer = await fetchOfferById(reservation.offerId);
+        if (offer) {
+          offersMap[reservation.offerId] = offer;
+        }
+      }
+    }
+    setReservationOffers(offersMap);
+
+    const favOffers: Offer[] = [];
+    for (const favoriteId of favorites) {
+      const offer = await fetchOfferById(favoriteId);
+      if (offer) {
+        favOffers.push(offer);
+      }
+    }
+    setFavoriteOffers(favOffers);
+
+    setLoading(false);
+  };
 
   const handleSaveProfile = () => {
     // Here you would typically save to backend
@@ -299,7 +339,12 @@ const Profile: React.FC = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Moje rezerwacje</h2>
 
-      {userReservations.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+          <p className="text-gray-600">Ładowanie rezerwacji...</p>
+        </div>
+      ) : userReservations.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -318,7 +363,8 @@ const Profile: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {userReservations.map(reservation => {
-            const offer = mockOffers.find(o => o.id === reservation.offerId);
+            const offer = reservationOffers[reservation.offerId];
+            if (!offer) return null;
             return (
               <div key={reservation.id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -402,7 +448,12 @@ const Profile: React.FC = () => {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Ulubione oferty</h2>
 
-      {favoriteOffers.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+          <p className="text-gray-600">Ładowanie ulubionych...</p>
+        </div>
+      ) : favoriteOffers.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
