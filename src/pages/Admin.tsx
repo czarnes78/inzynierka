@@ -890,32 +890,57 @@ const Admin: React.FC = () => {
     </div>
   );
 
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Analityka i raporty</h2>
+  const renderAnalytics = () => {
+    const monthlyStats = reservations
+      .filter(r => r.status === 'confirmed')
+      .reduce((acc, r) => {
+        const monthKey = `${r.createdAt.getFullYear()}-${String(r.createdAt.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = r.createdAt.toLocaleDateString('pl-PL', { year: 'numeric', month: 'long' });
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sprzedaż według miesięcy</h3>
-          <div className="space-y-3">
-            {['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj'].map((month, index) => (
-              <div key={month} className="flex items-center justify-between">
-                <span className="text-gray-600">{month}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${(index + 1) * 20}%` }}
-                    ></div>
+        if (!acc[monthKey]) {
+          acc[monthKey] = { name: monthName, revenue: 0, count: 0 };
+        }
+        acc[monthKey].revenue += r.totalPrice;
+        acc[monthKey].count += 1;
+        return acc;
+      }, {} as { [key: string]: { name: string; revenue: number; count: number } });
+
+    const sortedMonths = Object.entries(monthlyStats)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 6);
+
+    const maxRevenue = Math.max(...sortedMonths.map(([_, data]) => data.revenue), 1);
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">Analityka i raporty</h2>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sprzedaż według miesięcy</h3>
+            {sortedMonths.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">Brak potwierdzonych rezerwacji</p>
+            ) : (
+              <div className="space-y-3">
+                {sortedMonths.map(([key, data]) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <span className="text-gray-600 text-sm">{data.name}</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{ width: `${(data.revenue / maxRevenue) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 min-w-[80px] text-right">
+                        {data.revenue.toLocaleString('pl-PL')} zł
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {((index + 1) * 15000).toLocaleString('pl-PL')} zł
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Popularne kierunki</h3>
@@ -988,42 +1013,50 @@ const Admin: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Reservations Activity */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ostatnia aktywność</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm">Nowa rezerwacja #12345</span>
-            </div>
-            <span className="text-xs text-gray-500">2 min temu</span>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ostatnia aktywność rezerwacji</h3>
+        {reservations.length === 0 ? (
+          <p className="text-gray-600 text-center py-8">Brak rezerwacji</p>
+        ) : (
+          <div className="space-y-3">
+            {reservations.slice(0, 5).map((reservation) => {
+              const offer = reservationOffers[reservation.offerId];
+              const user = users.find(u => u.id === reservation.userId);
+              const timeDiff = Date.now() - reservation.createdAt.getTime();
+              const daysAgo = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+              const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+              const timeAgo = daysAgo > 0 ? `${daysAgo} dni temu` : `${hoursAgo} godz temu`;
+
+              return (
+                <div key={reservation.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                  reservation.status === 'confirmed' ? 'bg-green-50' :
+                  reservation.status === 'blocked' ? 'bg-orange-50' :
+                  'bg-red-50'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      reservation.status === 'confirmed' ? 'bg-green-500' :
+                      reservation.status === 'blocked' ? 'bg-orange-500' :
+                      'bg-red-500'
+                    }`}></div>
+                    <div>
+                      <span className="text-sm font-medium">{offer?.title || 'Ładowanie...'}</span>
+                      <p className="text-xs text-gray-500">
+                        {user?.name || 'Nieznany użytkownik'} • {reservation.totalPrice.toLocaleString('pl-PL')} zł
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500">{timeAgo}</span>
+                </div>
+              );
+            })}
           </div>
-          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm">Płatność potwierdzona #12344</span>
-            </div>
-            <span className="text-xs text-gray-500">5 min temu</span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-sm">Nowy użytkownik zarejestrowany</span>
-            </div>
-            <span className="text-xs text-gray-500">10 min temu</span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <span className="text-sm">Oferta wygasła: Greckie Wakacje</span>
-            </div>
-            <span className="text-xs text-gray-500">1 godz temu</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderSettings = () => (
     <div className="space-y-6">
