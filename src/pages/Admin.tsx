@@ -946,12 +946,15 @@ const Admin: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Popularne kierunki</h3>
           <div className="space-y-3">
             {(() => {
-              const countryStats = offers.reduce((acc, offer) => {
-                const country = offer.country;
-                if (!acc[country]) {
-                  acc[country] = 0;
+              const countryStats = reservations.reduce((acc, reservation) => {
+                const offer = reservationOffers[reservation.offerId];
+                if (offer) {
+                  const country = offer.country;
+                  if (!acc[country]) {
+                    acc[country] = 0;
+                  }
+                  acc[country]++;
                 }
-                acc[country]++;
                 return acc;
               }, {} as { [key: string]: number });
 
@@ -960,6 +963,10 @@ const Admin: React.FC = () => {
                 .slice(0, 5);
 
               const maxCount = sortedCountries[0]?.[1] || 1;
+
+              if (sortedCountries.length === 0) {
+                return <p className="text-gray-600 text-center py-8">Brak danych o rezerwacjach</p>;
+              }
 
               return sortedCountries.map(([country, count]) => (
                 <div key={country} className="flex items-center justify-between">
@@ -971,7 +978,7 @@ const Admin: React.FC = () => {
                         style={{ width: `${(count / maxCount) * 100}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">{count}</span>
+                    <span className="text-sm font-medium text-gray-900">{count} rez.</span>
                   </div>
                 </div>
               ));
